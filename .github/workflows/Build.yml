@@ -18,7 +18,7 @@ jobs:
       - name: Clone Android kernel source
         run: |
           echo "📥 Clonando kernel..."
-          git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33.git kernel
+          git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
           cd kernel
           git checkout main || true
           cd ..
