@@ -1,40 +1,58 @@
-name: Build TCP BBRv3 Kernel Module
+name: Build Kernel Module
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout module source
-        uses: actions/checkout@v4
+    - name: Checkout source
+      uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev clang lld llvm git gcc-aarch64-linux-gnu make
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential bc flex bison libssl-dev clang llvm git
 
-      - name: Clone kernel source (Android 5.10.x)
-        run: |
-          git clone --depth=1 https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
+    - name: Clone kernel source
+      run: |
+        git clone https://github.com/tuusuario/android_kernel_samsung_m33x.git kernel
+        cd kernel
+        # Solo como referencia, cambia la rama si no es "main"
+        git checkout main || true
+        cd ..
 
-      - name: Prepare kernel headers manually (skip defconfig)
-        run: |
-          cd kernel
-          make ARCH=arm64 prepare
-          make ARCH=arm64 modules_prepare
-          cd ..
+    - name: Create dummy kernel config
+      run: |
+        cd kernel
+        echo "CONFIG_MODULES=y" > .config
+        echo "CONFIG_NET=y" >> .config
+        echo "CONFIG_TCP_CONG_ADVANCED=y" >> .config
+        echo "CONFIG_TCP_CONG_BBR=m" >> .config
+        echo "CONFIG_BBR=y" >> .config
+        make ARCH=arm64 olddefconfig
+        cd ..
 
-      - name: Build tcp_bbr module
-        run: |
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- all
+    - name: Prepare kernel headers
+      run: |
+        cd kernel
+        make ARCH=arm64 prepare
+        make ARCH=arm64 modules_prepare
+        cd ..
 
-      - name: Upload compiled .ko
-        uses: actions/upload-artifact@v4
-        with:
-          name: tcp_bbr-ko
-          path: "*.ko"
+    - name: Build kernel module
+      run: |
+        echo "🔧 Building module..."
+        make -C kernel M=$(pwd) modules
+        echo "✅ Build complete"
+
+    - name: Upload compiled module
+      uses: actions/upload-artifact@v4
+      with:
+        name: compiled-module
+        path: "*.ko"
