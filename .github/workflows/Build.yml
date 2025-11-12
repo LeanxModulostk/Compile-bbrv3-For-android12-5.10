@@ -21,7 +21,7 @@ jobs:
 
     - name: Clone kernel source
       run: |
-        # Clona tu repositorio de kernel (cambia si usas otro)
+        # Clona tu repositorio del kernel (ajusta si usas otro)
         git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
         cd kernel
         git checkout main || true
@@ -30,6 +30,7 @@ jobs:
     - name: Patch missing Kconfig files
       run: |
         cd kernel
+        rm -rf drivers/kernelsu || true
         mkdir -p drivers/kernelsu
         echo "# Dummy KernelSU Kconfig to avoid build error" > drivers/kernelsu/Kconfig
         cd ..
