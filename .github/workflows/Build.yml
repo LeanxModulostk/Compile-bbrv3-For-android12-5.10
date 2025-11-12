@@ -1,4 +1,4 @@
-name: Build Kernel Module
+name: Build Kernel Module (ARM64)
 
 on:
   push:
@@ -11,56 +11,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout source
+    - name: Checkout module source
       uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential bc flex bison libssl-dev clang llvm git
+        sudo apt install -y build-essential bc flex bison libssl-dev \
+                            clang llvm git gcc-aarch64-linux-gnu
 
     - name: Clone kernel source
       run: |
-        # Clona tu repositorio del kernel (ajusta si usas otro)
         git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
         cd kernel
         git checkout main || true
         cd ..
 
-    - name: Patch missing Kconfig files
+    - name: Patch missing Kconfig
       run: |
         cd kernel
         rm -rf drivers/kernelsu || true
         mkdir -p drivers/kernelsu
-        echo "# Dummy KernelSU Kconfig to avoid build error" > drivers/kernelsu/Kconfig
+        echo "# Dummy Kconfig" > drivers/kernelsu/Kconfig
         cd ..
 
-    - name: Create dummy kernel config
+    - name: Create minimal kernel config
       run: |
         cd kernel
         echo "CONFIG_MODULES=y" > .config
         echo "CONFIG_NET=y" >> .config
         echo "CONFIG_TCP_CONG_ADVANCED=y" >> .config
-        echo "CONFIG_TCP_CONG_BBR=m" >> .config
-        echo "CONFIG_BBR=y" >> .config
-        make ARCH=arm64 olddefconfig
+        echo "CONFIG_TCP_CONG_WESTWOOD=m" >> .config
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
         cd ..
 
     - name: Prepare kernel headers
       run: |
         cd kernel
-        make ARCH=arm64 prepare
-        make ARCH=arm64 modules_prepare
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- prepare
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
         cd ..
 
     - name: Build kernel module
       run: |
-        echo "🔧 Building kernel module..."
-        make -C kernel M=$(pwd) modules
-        echo "✅ Module build finished"
+        echo "🔧 Building module..."
+        make -C kernel ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- M=$(pwd) modules
+        echo "✅ Build complete"
 
     - name: Upload compiled module
       uses: actions/upload-artifact@v4
       with:
-        name: compiled-module
+        name: westwood-module
         path: "*.ko"
