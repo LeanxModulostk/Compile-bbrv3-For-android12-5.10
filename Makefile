@@ -1,18 +1,15 @@
-obj-m := tcp_bbr.o
+include Kbuild
 
-# Ruta del kernel fuente (clonado en GitHub Actions)
-KERNEL_DIR ?= $(PWD)/kernel
-
-# Variables para compilar kernel Android ARM64
-ARCH := arm64
-CROSS_COMPILE := aarch64-linux-gnu-
+KERNELRELEASE ?= `uname -r`
+KERNEL_DIR ?= /lib/modules/$(KERNELRELEASE)/build
 PWD := $(shell pwd)
 
 EXTRA_CFLAGS += -Wall
+EXTRA_CFLAGS += -I$(KERNEL_DIR)/net/ipv4
 
 all:
-	@echo "Building tcp_bbr.ko..."
-	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules
+	@echo "Building tcp..."
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
