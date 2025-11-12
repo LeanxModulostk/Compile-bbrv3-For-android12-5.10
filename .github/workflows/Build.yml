@@ -21,7 +21,7 @@ jobs:
 
     - name: Clone kernel source
       run: |
-        git clone https://github.com/tuusuario/android_kernel_samsung_m33x.git kernel
+        git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
         cd kernel
         # Solo como referencia, cambia la rama si no es "main"
         git checkout main || true
