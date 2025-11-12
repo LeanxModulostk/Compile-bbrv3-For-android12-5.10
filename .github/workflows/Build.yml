@@ -22,10 +22,9 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
 
-      - name: Prepare kernel headers
+      - name: Prepare kernel headers manually (skip defconfig)
         run: |
           cd kernel
-          make ARCH=arm64 m33x_defconfig
           make ARCH=arm64 prepare
           make ARCH=arm64 modules_prepare
           cd ..
@@ -39,4 +38,3 @@ jobs:
         with:
           name: tcp_bbr-ko
           path: "*.ko"
-          
