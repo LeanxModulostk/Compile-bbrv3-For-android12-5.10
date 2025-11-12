@@ -1,65 +1,65 @@
-name: Build Kernel Module (ARM64)
+name: Build TCP BBRv3 Kernel Module
 
 on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout module source
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential bc flex bison libssl-dev \
-                            clang llvm git gcc-aarch64-linux-gnu
+      # Clona tu repositorio del kernel
+      - name: Clone Android kernel source
+        run: |
+          echo "📥 Clonando kernel..."
+          git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33.git kernel
+          cd kernel
+          git checkout main || true
+          cd ..
 
-    - name: Clone kernel source
-      run: |
-        git clone https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
-        cd kernel
-        git checkout main || true
-        cd ..
+      # Instala dependencias necesarias
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc flex bison clang llvm make gcc g++ \
+            libncurses5-dev libssl-dev ccache git dwarves
 
-    - name: Patch missing Kconfig
-      run: |
-        cd kernel
-        rm -rf drivers/kernelsu || true
-        mkdir -p drivers/kernelsu
-        echo "# Dummy Kconfig" > drivers/kernelsu/Kconfig
-        cd ..
+      # Corrige error de Kconfig faltante (KernelSU)
+      - name: Patch missing Kconfig files
+        run: |
+          cd kernel
+          rm -rf drivers/kernelsu || true
+          mkdir -p drivers/kernelsu
+          echo "# Dummy KernelSU Kconfig to avoid build error" > drivers/kernelsu/Kconfig
+          cd ..
 
-    - name: Create minimal kernel config
-      run: |
-        cd kernel
-        echo "CONFIG_MODULES=y" > .config
-        echo "CONFIG_NET=y" >> .config
-        echo "CONFIG_TCP_CONG_ADVANCED=y" >> .config
-        echo "CONFIG_TCP_CONG_WESTWOOD=m" >> .config
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-        cd ..
+      # Prepara los headers del kernel (importante!)
+      - name: Prepare kernel headers
+        run: |
+          cd kernel
+          echo "🧱 Preparando headers del kernel..."
+          make ARCH=arm64 defconfig
+          make ARCH=arm64 modules_prepare
+          cd ..
 
-    - name: Prepare kernel headers
-      run: |
-        cd kernel
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- prepare
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
-        cd ..
+      # Compila el módulo
+      - name: Build BBRv3 module
+        run: |
+          echo "🔧 Compilando módulo tcp_bbrv3..."
+          make -C kernel ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- M=$(pwd) \
+               EXTRA_CFLAGS="-I$(pwd)/kernel/net/ipv4"
+          echo "✅ Compilación finalizada"
 
-    - name: Build kernel module
-      run: |
-        echo "🔧 Building module..."
-        make -C kernel ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- M=$(pwd) modules
-        echo "✅ Build complete"
-
-    - name: Upload compiled module
-      uses: actions/upload-artifact@v4
-      with:
-        name: westwood-module
-        path: "*.ko"
+      # Sube el archivo .ko compilado
+      - name: Upload compiled module
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcp_bbr-ko
+          path: "*.ko"
