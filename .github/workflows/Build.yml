@@ -1,0 +1,42 @@
+name: Build TCP BBRv3 Kernel Module
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout module source
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev clang lld llvm git gcc-aarch64-linux-gnu make
+
+      - name: Clone kernel source (Android 5.10.x)
+        run: |
+          git clone --depth=1 https://github.com/LeanxModulostk/android_kernel_samsung_m33x.git kernel
+
+      - name: Prepare kernel headers
+        run: |
+          cd kernel
+          make ARCH=arm64 m33x_defconfig
+          make ARCH=arm64 prepare
+          make ARCH=arm64 modules_prepare
+          cd ..
+
+      - name: Build tcp_bbr module
+        run: |
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- all
+
+      - name: Upload compiled .ko
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcp_bbr-ko
+          path: "*.ko"
+          
