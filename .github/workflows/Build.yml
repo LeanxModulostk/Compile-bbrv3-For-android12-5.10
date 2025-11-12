@@ -14,7 +14,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Clona tu repositorio del kernel
+      # 🔽 Clona tu kernel Android (ajusta el enlace si usas otro repo)
       - name: Clone Android kernel source
         run: |
           echo "📥 Clonando kernel..."
@@ -23,15 +23,16 @@ jobs:
           git checkout main || true
           cd ..
 
-      # Instala dependencias necesarias
+      # 🧰 Instala dependencias y toolchain ARM64
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             bc flex bison clang llvm make gcc g++ \
+            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             libncurses5-dev libssl-dev ccache git dwarves
 
-      # Corrige error de Kconfig faltante (KernelSU)
+      # 🩹 Corrige Kconfig faltante (drivers/kernelsu/)
       - name: Patch missing Kconfig files
         run: |
           cd kernel
@@ -40,26 +41,30 @@ jobs:
           echo "# Dummy KernelSU Kconfig to avoid build error" > drivers/kernelsu/Kconfig
           cd ..
 
-      # Prepara los headers del kernel (importante!)
+      # 🧱 Prepara headers del kernel con el toolchain ARM64 correcto
       - name: Prepare kernel headers
         run: |
           cd kernel
           echo "🧱 Preparando headers del kernel..."
-          make ARCH=arm64 defconfig
-          make ARCH=arm64 modules_prepare
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export ARCH=arm64
+          make CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 defconfig
+          make CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 modules_prepare
           cd ..
 
-      # Compila el módulo
-      - name: Build BBRv3 module
+      # 🔧 Compila el módulo externo (por ejemplo tcp_bbrv3.c)
+      - name: Build tcp_bbrv3 module
         run: |
           echo "🔧 Compilando módulo tcp_bbrv3..."
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export ARCH=arm64
           make -C kernel ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- M=$(pwd) \
                EXTRA_CFLAGS="-I$(pwd)/kernel/net/ipv4"
           echo "✅ Compilación finalizada"
 
-      # Sube el archivo .ko compilado
+      # 📦 Sube el archivo .ko compilado
       - name: Upload compiled module
         uses: actions/upload-artifact@v4
         with:
-          name: tcp_bbr-ko
+          name: tcp_bbrv3-ko
           path: "*.ko"
